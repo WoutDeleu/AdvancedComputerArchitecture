@@ -14,7 +14,7 @@ output_cpu = output_arr
 # Define kernel (GPU) function ...
 @cuda.jit
 def flip(input_arr, output_arr):
-    i = cuda.threadIdx.x + 1024 * (cuda.blockIdx.x - 1)
+    i = cuda.threadIdx.x + cuda.blockDim.x * (cuda.blockIdx.x - 1)
     output_arr[i] = input_arr[N - i - 1]
 
 
@@ -37,9 +37,7 @@ print()
 
 start = time.time()
 for i in range(0, int(N / 2)):
-    temp = input_cpu[i]
     output_cpu[i] = input_cpu[N - i - 1]
-    output_cpu[N - 1 - i] = temp
 total = time.time() - start
 print("CPU RESULTS:")
 print(total)
