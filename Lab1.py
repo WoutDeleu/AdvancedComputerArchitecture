@@ -3,7 +3,7 @@ import time
 import numpy as np
 from numba import cuda
 
-N = 1000000
+N = 1000
 input_arr = np.arange(N)
 output_arr = np.zeros_like(input_arr)
 
@@ -21,12 +21,12 @@ def flip(input_arr, output_arr):
 # Call kernel function ...
 # Time it
 numberBlocks = math.ceil(N / 1024)
-numberThreads = N / numberBlocks;
-flip[numberBlocks, numberBlocks](input_arr, output_arr)
+numberThreads = math.ceil(N / numberBlocks);
+flip[numberBlocks, numberThreads](input_arr, output_arr)
 start = time.time()
 # 1 block, N threads
 # code uitgevoerd voor N/2 threads
-flip[numberBlocks, numberBlocks](input_arr, output_arr)
+flip[numberBlocks, numberThreads](input_arr, output_arr)
 cuda.synchronize()
 total = time.time() - start
 print("GPU RESULTS:")
