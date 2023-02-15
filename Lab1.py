@@ -3,7 +3,7 @@ import time
 import numpy as np
 from numba import cuda
 
-N = 1000
+N = 100000000
 input_arr = np.arange(N)
 output_arr = np.zeros_like(input_arr)
 
