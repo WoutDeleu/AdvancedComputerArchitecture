@@ -15,7 +15,6 @@ def sum_columns_matrix_atomic(matrix, summed):
     x, y = cuda.grid(2)
     cuda.atomic.add(summed, x, matrix[x][y])
 
-
 @cuda.jit
 def sum_columns_matrix_reduction(matrix, summed):
     x, y = cuda.grid(2)
