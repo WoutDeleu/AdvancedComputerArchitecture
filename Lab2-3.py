@@ -15,19 +15,35 @@ def sum_columns_matrix_atomic(matrix, summed):
 
 
     x, y = cuda.grid(2)
+
+
     cuda.atomic.add(summed, x, matrix[x][y])
+    # todo: make dynamic
+
 
 @cuda.jit
 def sum_columns_matrix_reduction(matrix, summed):
-    x, y = cuda.grid(2)
-    if x < len(matrix.shape[0])/2:
-        summed[x*2+1] = matrix[x*2+1][y] + matrix[x*2][y]
+    x = cuda.blockIdx.x
+    y = 2 * cuda.threadIdx.x
+    cuda.syncthreads()
+
+    i = 1
+    while i <= cuda.blockDim.x:
+        if y % (2 * i) == 0:
+            matrix[x][y] += matrix[x][y + i]
+        cuda.syncthreads()
+        i *= 2
+    if cuda.threadIdx.x == 0:
+        summed[x] = matrix[x][0]
 
 
-summed_array = np.zeros(sizeArray)
+summed_array_atomic = np.zeros(sizeArray)
+summed_array_reduction = np.zeros(sizeArray)
 input_matrix = np.random.randint(10, size=(sizeArray, sizeArray))
-sum_columns_matrix_atomic[amount_of_blocks, block_size](input_matrix, summed_array)
+sum_columns_matrix_atomic[amount_of_blocks, block_size](input_matrix, summed_array_atomic)
+sum_columns_matrix_reduction[amount_of_blocks, block_size](input_matrix, summed_array_reduction)
 
 print(input_matrix)
 print()
-print(summed_array)
+print(summed_array_atomic)
+print(summed_array_reduction)
