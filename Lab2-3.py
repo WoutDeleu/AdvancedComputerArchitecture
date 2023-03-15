@@ -24,15 +24,15 @@ def sum_columns_matrix_atomic(matrix, summed):
 @cuda.jit
 def sum_columns_matrix_reduction(matrix, summed):
     x = cuda.blockIdx.x
-    y =
-    cuda.syncthreads()
+    y = cuda.threadIdx
+    max = blockDim.x
 
     i = 1
-    while i <= cuda.blockDim.x:
+    while i <= max:
         if y % (2 * i) == 0:
             matrix[x][y] += matrix[x][y + i]
-        cuda.syncthreads()
         i *= 2
+    cuda.syncthreads()
     if cuda.threadIdx.x == 0:
         summed[x] = matrix[x][0]
 
