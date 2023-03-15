@@ -10,10 +10,10 @@ output_arr = np.zeros_like(img_arr)
 def inverse(img_arr, output):
     x = cuda.blockIdx.x
     y = cuda.blockIdx.y
-    idx = x + y * cuda.gridDim.x
+    idx = int(x) + int(y) * cuda.gridDim.x
 
     for i in range(100):
-        output[idx + i] = 255 - img_arr[idx + i];
+        output[idx + i] = 255 - img_arr[idx + i]
 
 
 inverse(img_arr, output_arr)
