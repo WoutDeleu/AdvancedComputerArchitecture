@@ -24,7 +24,7 @@ def sum_columns_matrix_atomic(matrix, summed):
 @cuda.jit
 def sum_columns_matrix_reduction(matrix, summed):
     x = cuda.blockIdx.x
-    y = 2 * cuda.threadIdx.x
+    y =
     cuda.syncthreads()
 
     i = 1
