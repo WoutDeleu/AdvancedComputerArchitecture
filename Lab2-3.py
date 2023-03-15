@@ -13,7 +13,6 @@ amount_of_blocks = [number_blocks_x, number_blocks_y]
 @cuda.jit
 def sum_columns_matrix_atomic(matrix, summed):
     x, y = cuda.grid(2)
-    # if matrix.shape[0]
     cuda.atomic.add(summed, x, matrix[x][y])
 
 
