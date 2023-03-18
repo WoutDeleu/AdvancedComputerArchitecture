@@ -12,11 +12,8 @@ else:
     block_size = 32, 32
 
 # 1024 threads per block
-number_blocks_x = math.ceil(arraySize / 32)
-number_blocks_y = math.ceil(arraySize / 32)
-
-# amount of threads, can also be int
-block_size = 32, 32
+number_blocks_x = math.ceil(arraySize / block_size[1])
+number_blocks_y = math.ceil(arraySize / block_size[0])
 
 # can also be int
 amount_of_blocks = number_blocks_y, number_blocks_x
@@ -61,7 +58,9 @@ def sum_axis_matrix_reduction(matrix, summed):
 
 summed_array_atomic = np.zeros(arraySize)
 input_matrix = np.random.randint(10, size=(arraySize, arraySize))
+# input_matrix = np.ones((arraySize, arraySize))
 
+# 0 is column
 axis = 0
 print("Input:")
 print(input_matrix)
@@ -90,5 +89,4 @@ sum_axis_matrix_reduction[amount_of_blocks, block_size](input_matrix, summed_arr
 total = time.time() - start
 print("GPU RESULTS REDUCTION")
 print(summed_array_red)
-
-
+print(total)
