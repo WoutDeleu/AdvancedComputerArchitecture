@@ -3,7 +3,7 @@ import math
 import numpy as np
 from numba import cuda
 
-sizeArray = 100
+sizeArray = 10
 number_blocks_x = math.ceil(sizeArray / 1024)
 number_blocks_y = math.ceil(sizeArray / 1024)
 
