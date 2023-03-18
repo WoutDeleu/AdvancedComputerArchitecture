@@ -4,7 +4,7 @@ import time
 import numpy as np
 from numba import cuda
 
-arraySize = 100
+arraySize = 4
 # amount of threads, can also be in
 if arraySize < 32:
     block_size = arraySize, arraySize
@@ -35,12 +35,13 @@ def sum_axis_matrix_atomic(matrix, summed, axis):
         if axis == 1:
             cuda.atomic.add(summed, y, matrix[y][x])
 
+
 # reduction is way faster!!! No atomic operations!!
 # input always 2^N, INTERLEAVED REDUCTION!
 @cuda.jit
 def sum_axis_matrix_reduction(matrix, summed):
     thread_id = cuda.threadIdx.x + cuda.blockDim.x * cuda.blockIdx.x + cuda.blockDim.y * cuda.blockIdx.y
-    #thread_id = (cuda.blockId.x * (cuda.blockDim.x * cuda.blockDim.y)) + (cuda.threadIdx.y * cuda.blockDim.x) + cuda.threadIdx.x
+    # thread_id = (cuda.blockId.x * (cuda.blockDim.x * cuda.blockDim.y)) + (cuda.threadIdx.y * cuda.blockDim.x) + cuda.threadIdx.x
 
     y = cuda.blockIdx.y * cuda.blockDim.y + cuda.threadIdx.y
 
@@ -66,6 +67,12 @@ print("Input:")
 print(input_matrix)
 print()
 
+input_matrix_2 = input_matrix
+
+sum_axis_matrix_atomic[amount_of_blocks, block_size](input_matrix, summed_array_atomic, axis)
+
+summed_array_atomic = np.zeros(arraySize)
+
 start = time.time()
 sum_axis_matrix_atomic[amount_of_blocks, block_size](input_matrix, summed_array_atomic, axis)
 total = time.time() - start
@@ -84,8 +91,13 @@ print(total)
 print()
 
 summed_array_red = np.zeros(arraySize)
+
+# sum_axis_matrix_reduction[amount_of_blocks, block_size](input_matrix, summed_array_red)
+
+summed_array_red = np.zeros(arraySize)
+
 start = time.time()
-sum_axis_matrix_reduction[amount_of_blocks, block_size](input_matrix, summed_array_red)
+sum_axis_matrix_reduction[amount_of_blocks, block_size](input_matrix_2, summed_array_red)
 total = time.time() - start
 print("GPU RESULTS REDUCTION")
 print(summed_array_red)
