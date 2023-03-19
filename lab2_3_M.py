@@ -4,7 +4,7 @@ import time
 import numpy as np
 from numba import cuda
 
-arraySize = 1000
+arraySize = 10000
 block_size = 32, 32
 
 # 1024 threads per block
@@ -88,7 +88,7 @@ print()
 start = time.time()
 summed = input_matrix.sum(axis=axis)
 total = time.time() - start
-print("CPU RESULTS ATOMIC")
+print("CPU RESULTS")
 print(summed)
 print(total)
 print()
