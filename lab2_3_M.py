@@ -4,7 +4,7 @@ import time
 import numpy as np
 from numba import cuda
 
-arraySize = 10000
+arraySize = 16
 block_size = 32, 32
 
 # 1024 threads per block
@@ -52,7 +52,6 @@ def sum_axis_matrix_reduction(matrix, summed):
         summed[y] = matrix[index][y]
 
 
-summed_array_atomic = np.zeros(arraySize)
 input_matrix = np.random.randint(10, size=(arraySize, arraySize))
 # input_matrix = np.ones((arraySize, arraySize))
 
@@ -62,6 +61,7 @@ print("Input:")
 print(input_matrix)
 print()
 
+summed_array_atomic = np.zeros(arraySize)
 input_matrix_2 = input_matrix.copy()
 input_matrix_3 = input_matrix.copy()
 
@@ -85,16 +85,20 @@ print(np.average(times))
 
 print()
 
-start = time.time()
-summed = input_matrix.sum(axis=axis)
-total = time.time() - start
-print("CPU RESULTS")
+times = []
+
+for i in range(10):
+    start = time.time()
+    summed = input_matrix.sum(axis=axis)
+    total = time.time() - start
+    times.append(total)
+print("CPU results")
 print(summed)
-print(total)
+print(times)
+print(np.average(times))
+
+
 print()
-
-
-
 
 
 
