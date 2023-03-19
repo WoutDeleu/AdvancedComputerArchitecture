@@ -4,12 +4,8 @@ import time
 import numpy as np
 from numba import cuda
 
-arraySize = 4
-# amount of threads, can also be in
-if arraySize < 32:
-    block_size = arraySize, arraySize
-else:
-    block_size = 32, 32
+arraySize = 1000
+block_size = 32, 32
 
 # 1024 threads per block
 number_blocks_x = math.ceil(arraySize / block_size[1])
@@ -22,18 +18,18 @@ amount_of_blocks = number_blocks_y, number_blocks_x
 # summed is a one dimensional array
 @cuda.jit
 def sum_axis_matrix_atomic(matrix, summed, axis):
-    # x, y coord of thread within grid, x row and y column
-
     x = cuda.threadIdx.x + cuda.blockDim.x * cuda.blockIdx.x
     y = cuda.threadIdx.y + cuda.blockDim.y * cuda.blockIdx.y
 
-    # undefined behaviour possible if we don't add this statement
-    # shape[0] is amount of rows
-    if x < matrix.shape[1] and y < matrix.shape[0]:
-        if axis == 0:
-            cuda.atomic.add(summed, x, matrix[y][x])
-        if axis == 1:
-            cuda.atomic.add(summed, y, matrix[y][x])
+    if axis == 0:
+        for i in range(x, matrix.shape[1], cuda.blockDim.x * cuda.gridDim.x):
+            for j in range(y, matrix.shape[0], cuda.blockDim.y * cuda.gridDim.y):
+                cuda.atomic.add(summed, i, matrix[j][i])
+    else:
+        for j in range(y, matrix.shape[0], cuda.blockDim.y * cuda.gridDim.y):
+            for i in range(x, matrix.shape[1], cuda.blockDim.x * cuda.gridDim.x):
+                cuda.atomic.add(summed, j, matrix[j][i])
+
 
 
 # reduction is way faster!!! No atomic operations!!
@@ -41,7 +37,6 @@ def sum_axis_matrix_atomic(matrix, summed, axis):
 @cuda.jit
 def sum_axis_matrix_reduction(matrix, summed):
     thread_id = cuda.threadIdx.x + cuda.blockDim.x * cuda.blockIdx.x + cuda.blockDim.y * cuda.blockIdx.y
-    # thread_id = (cuda.blockId.x * (cuda.blockDim.x * cuda.blockDim.y)) + (cuda.threadIdx.y * cuda.blockDim.x) + cuda.threadIdx.x
 
     y = cuda.blockIdx.y * cuda.blockDim.y + cuda.threadIdx.y
 
@@ -51,8 +46,8 @@ def sum_axis_matrix_reduction(matrix, summed):
         # if i < cuda.blockDim.x and y < cuda.blockDim.y:
         if index + s < matrix.shape[0] and y < matrix.shape[1]:
             matrix[index][y] += matrix[index + s][y]
-        s = s * 2
         cuda.syncthreads()
+        s = s * 2
     if index == 0 and y < cuda.blockDim.y:
         summed[y] = matrix[index][y]
 
@@ -67,18 +62,26 @@ print("Input:")
 print(input_matrix)
 print()
 
-input_matrix_2 = input_matrix
+input_matrix_2 = input_matrix.copy()
+input_matrix_3 = input_matrix.copy()
 
 sum_axis_matrix_atomic[amount_of_blocks, block_size](input_matrix, summed_array_atomic, axis)
 
-summed_array_atomic = np.zeros(arraySize)
+times = []
 
-start = time.time()
-sum_axis_matrix_atomic[amount_of_blocks, block_size](input_matrix, summed_array_atomic, axis)
-total = time.time() - start
+for i in range(10):
+    summed_array_atomic = np.zeros(arraySize)
+    start = time.time()
+    sum_axis_matrix_atomic[amount_of_blocks, block_size](input_matrix, summed_array_atomic, axis)
+    total = time.time() - start
+    times.append(total)
 print("GPU RESULTS ATOMIC:")
 print(summed_array_atomic)
-print(total)
+print(times)
+print(np.average(times))
+
+
+
 
 print()
 
@@ -90,15 +93,27 @@ print(summed)
 print(total)
 print()
 
+
+
+
+
+
+summed_array_red = np.zeros(arraySize)
+sum_axis_matrix_reduction[amount_of_blocks, block_size](input_matrix, summed_array_red)
+
 summed_array_red = np.zeros(arraySize)
 
-# sum_axis_matrix_reduction[amount_of_blocks, block_size](input_matrix, summed_array_red)
+times = []
 
-summed_array_red = np.zeros(arraySize)
+for i in range(10):
+    input_matrix_2 = input_matrix_3.copy()
+    summed_array_red = np.zeros(arraySize)
+    start = time.time()
+    sum_axis_matrix_reduction[amount_of_blocks, block_size](input_matrix_2, summed_array_red)
+    total = time.time() - start
+    times.append(total)
 
-start = time.time()
-sum_axis_matrix_reduction[amount_of_blocks, block_size](input_matrix_2, summed_array_red)
-total = time.time() - start
 print("GPU RESULTS REDUCTION")
 print(summed_array_red)
-print(total)
+print(times)
+print(np.average(times))

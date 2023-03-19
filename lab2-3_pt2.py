@@ -3,21 +3,20 @@ import numpy as np
 from PIL import Image
 from numba import cuda
 
-threads_per_block = (8, 8, 8)
+#z is RGB!
+threads_per_block = (8, 8, 3)
 
-img = Image.open("sheldon.jpeg")
-img_arr = np.array(img)
-output_arr = np.zeros_like(img_arr)
+img = Image.open("appel-artikel.jpg")
+image_array = np.array(img)
+output_array = np.zeros_like(image_array)
 
-input = cuda.to_device(img_arr)
-output = cuda.device_array_like(output_arr)
+number_blocks_x = math.ceil((image_array.shape[1]) / threads_per_block[1])
+number_blocks_y = math.ceil((image_array.shape[0]) / threads_per_block[0])
+number_blocks_z = math.ceil((image_array.shape[2]) / threads_per_block[2])
 
-number_blocks_x = math.floor((img_arr.shape[1] + threads_per_block[1] - 1) / threads_per_block[1])
-number_blocks_y = math.floor((img_arr.shape[0] + threads_per_block[0] - 1) / threads_per_block[0])
+blocks_per_grid = (number_blocks_y, number_blocks_x, number_blocks_z)
 
-blocks_per_grid = (number_blocks_y, number_blocks_x, 1)
-
-#inversion = 255-R, 255-G, 255-B
+# inversion = 255-R, 255-G, 255-B
 @cuda.jit
 def inverse(img_arr, inverted_arr):
     x = cuda.threadIdx.x + cuda.blockDim.x * cuda.blockIdx.x
@@ -25,12 +24,10 @@ def inverse(img_arr, inverted_arr):
     z = cuda.threadIdx.z + cuda.blockDim.z * cuda.blockIdx.z
 
     if x < img_arr.shape[1] and y < img_arr.shape[0] and z < img_arr.shape[2]:
-
-        #row, column, depth
+        # row, column, depth
         inverted_arr[y, x, z] = 255 - img_arr[y, x, z]
 
 
-inverse[blocks_per_grid, threads_per_block](img_arr, output)
-output_arr = output.copy_to_host()
-output_img = Image.fromarray(output_arr)
-output_img.save("inverted_sheldon.jpeg")
+inverse[blocks_per_grid, threads_per_block](image_array, output_array)
+output_img = Image.fromarray(output_array)
+output_img.save("inverted-appel.jpg")
