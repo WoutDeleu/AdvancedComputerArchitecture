@@ -4,7 +4,7 @@ import time
 import numpy as np
 from numba import cuda
 
-arraySize = 16
+arraySize = 1000
 block_size = 32, 32
 
 # 1024 threads per block
