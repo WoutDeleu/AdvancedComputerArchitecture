@@ -21,7 +21,6 @@ number_blocks_z = math.ceil((image_array.shape[2]) / threads_per_block[2])
 
 blocks_per_grid = (number_blocks_y, number_blocks_x, number_blocks_z)
 
-# inversion = 255-R, 255-G, 255-B
 @cuda.jit
 def inverse(image_array, inverted_arr):
     x_init = cuda.threadIdx.x + cuda.blockDim.x * cuda.blockIdx.x
