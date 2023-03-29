@@ -44,12 +44,12 @@ def sum_axis_matrix_reduction(matrix, summed):
     while s < cuda.blockDim.x:
         index = 2 * s * thread_id
         # if i < cuda.blockDim.x and y < cuda.blockDim.y:
-        if index + s < matrix.shape[0] and y < matrix.shape[1]:
-            matrix[index][y] += matrix[index + s][y]
+        if index + s < matrix.shape[0]: # and y < matrix.shape[1]:
+            matrix[index] += matrix[index + s]
         cuda.syncthreads()
         s = s * 2
-    if index == 0 and y < cuda.blockDim.y:
-        summed[y] = matrix[index][y]
+    # if index == 0  and y < cuda.blockDim.y:
+    #     summed[y] = matrix[index][y]
 
 
 input_matrix = np.random.randint(10, size=(arraySize, arraySize))
@@ -103,7 +103,8 @@ print()
 
 
 summed_array_red = np.zeros(arraySize)
-sum_axis_matrix_reduction[amount_of_blocks, block_size](input_matrix, summed_array_red)
+input_array_red = np.zeros(arraySize)
+sum_axis_matrix_reduction[amount_of_blocks, block_size](input_array_red, summed_array_red)
 
 summed_array_red = np.zeros(arraySize)
 
