@@ -18,6 +18,8 @@ amount_of_blocks = number_blocks_y, number_blocks_x
 # summed is a one dimensional array
 @cuda.jit
 def sum_axis_matrix_atomic(matrix, summed, axis):
+
+    #x is kolom, y is rij
     x = cuda.threadIdx.x + cuda.blockDim.x * cuda.blockIdx.x
     y = cuda.threadIdx.y + cuda.blockDim.y * cuda.blockIdx.y
 
