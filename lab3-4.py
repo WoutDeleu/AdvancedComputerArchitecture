@@ -9,8 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numba import cuda
 
-threads_per_block = 32
-
 # report: evaluation complexity changes with input size, complexity curves
 def matrix_multiplication_CPU(A, B, C):  # Result
     for i in range(A.shape[0]):
@@ -46,10 +44,10 @@ def matrix_multiplication_GPU_shared_memory(A, B, resulting_matrix):
 
     sum = 0
     for x in range(amount_of_blocks):
-        if j < A.shape[0] and (tx + x * threads_per_block) < A.shape[1]:
-            A_shared[ty, tx] = A[j, tx + x * threads_per_block]
-        if i < B.shape[1] and (ty + x * threads_per_block) < B.shape[0]:
-            B_shared[ty, tx] = B[ty + x * threads_per_block, i]
+        if j < A.shape[0] and (tx + x * block_size[0]) < A.shape[1]:
+            A_shared[ty, tx] = A[j, tx + x * block_size[0]]
+        if i < B.shape[1] and (ty + x * block_size[0]) < B.shape[0]:
+            B_shared[ty, tx] = B[ty + x * block_size[0], i]
 
         cuda.syncthreads()
 

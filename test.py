@@ -47,10 +47,10 @@ def matrix_multiplication_GPU_shared_memory(A, B, resulting_matrix):
 
     sum = 0
     for x in range(amount_of_blocks):
-        if j < A.shape[0] and (tx + x * threads_per_block) < A.shape[1]:
-            A_shared[ty, tx] = A[j, tx + x * threads_per_block]
-        if i < B.shape[1] and (ty + x * threads_per_block) < B.shape[0]:
-            B_shared[ty, tx] = B[ty + x * threads_per_block, i]
+        if j < A.shape[0] and (tx + x * block_size[0]) < A.shape[1]:
+            A_shared[ty, tx] = A[j, tx + x * block_size[0]]
+        if i < B.shape[1] and (ty + x * block_size[0]) < B.shape[0]:
+            B_shared[ty, tx] = B[ty + x * block_size[0], i]
 
         cuda.syncthreads()
 
@@ -61,7 +61,6 @@ def matrix_multiplication_GPU_shared_memory(A, B, resulting_matrix):
 
     if j < resulting_matrix.shape[0] and i < resulting_matrix.shape[1]:
         resulting_matrix[j, i] = sum
-
 
 
 
