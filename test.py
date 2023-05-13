@@ -3,7 +3,7 @@ import math
 import numpy as np
 from numba import cuda, float32
 
-size = 10
+size = 1000
 
 A = np.random.randint(10, size=(size, size))
 B = np.random.randint(10, size=(size, size))
@@ -22,60 +22,84 @@ amount_of_blocks = number_blocks_x, number_blocks_y
 
 
 @cuda.jit
-def matrix_multiplication_GPU(A, B, resulting_matrix):  # Result
-    # x = row, y = column
-    x, y = cuda.grid(2)
-    for i in range(x, A.shape[0], cuda.blockDim.y * cuda.gridDim.y):
-        for j in range(y, A.shape[1], cuda.blockDim.x * cuda.gridDim.x):
-            # if i < A.shape[0] and j < B.shape[1]:
+def matrix_multiplication_GPU(A, B, resulting_matrix):
+
+    # x = column, y = row
+    x = cuda.threadIdx.x + cuda.blockDim.x * cuda.blockIdx.x
+    y = cuda.threadIdx.y + cuda.blockDim.y * cuda.blockIdx.y
+
+    for i in range(x, A.shape[1], cuda.blockDim.x * cuda.gridDim.x):
+        for j in range(y, A.shape[0], cuda.blockDim.y * cuda.gridDim.y):
             sum = 0
             for k in range(A.shape[1]):
-                sum += A[i, k] * B[k, j]
-            resulting_matrix[i, j] = sum
+                sum += A[j, k] * B[k, i]
+            resulting_matrix[j, i] = sum
+
+
 
 
 @cuda.jit
-def matrix_multiplication_GPU_shared_memory(A, B, resulting_matrix):
+def shared(A, B, resulting_matrix):
+    tx = cuda.threadIdx.x
+    x = tx + cuda.blockDim.x * cuda.blockIdx.x
+
+    ty = cuda.threadIdx.y
+    y = ty + cuda.blockDim.y * cuda.blockIdx.y
+
     A_shared = cuda.shared.array(shape=block_size, dtype=np.int32)
     B_shared = cuda.shared.array(shape=block_size, dtype=np.int32)
-    i, j = cuda.grid(2)
-
-    # tx = kolom
-    tx = cuda.threadIdx.x
-    ty = cuda.threadIdx.y
-    amount_of_blocks = cuda.gridDim.x  # blocks per grid
 
     sum = 0
-    for x in range(amount_of_blocks):
-        if j < A.shape[0] and (tx + x * block_size[0]) < A.shape[1]:
-            A_shared[ty, tx] = A[j, tx + x * block_size[0]]
-        if i < B.shape[1] and (ty + x * block_size[0]) < B.shape[0]:
-            B_shared[ty, tx] = B[ty + x * block_size[0], i]
+
+    # copy naar shared memory
+    for i in range(cuda.gridDim.x):
+
+        # nodig om unexpected behaviour te vermijden!
+        A_shared[ty, tx] = 0
+        B_shared[ty, tx] = 0
+
+        if y < A.shape[0] and tx + i * block_size[1] < A.shape[1]:
+            A_shared[ty, tx] = A[y, tx + i * block_size[1]]
+
+        if x < A.shape[1] and ty + i * block_size[0] < A.shape[0]:
+            B_shared[ty, tx] = B[ty + i * block_size[0], x]
+
+        # na iteratie syncen!
+        cuda.syncthreads()
+
+        for j in range(block_size[1]):
+            sum += A_shared[ty, j] * B_shared[j, tx]
 
         cuda.syncthreads()
 
-        for y in range(block_size[0]):
-            sum += A_shared[ty, y] * B_shared[y, tx]
-
-        cuda.syncthreads()
-
-    if j < resulting_matrix.shape[0] and i < resulting_matrix.shape[1]:
-        resulting_matrix[j, i] = sum
+    if x < resulting_matrix.shape[1] and y < resulting_matrix.shape[0]:
+        resulting_matrix[y, x] = sum
 
 
-
+def matrix_multiplication_CPU(A, B, resulting_matrix):
+    for i in range(A.shape[0]):
+        for j in range(B.shape[1]):
+            for k in range(A.shape[1]):
+                resulting_matrix[i][j] += A[i][k] * B[k][j]
 
 
 res = np.matmul(A, B)
 print(res)
 
 
-normal = matrix_multiplication_GPU[amount_of_blocks, block_size](A, B, resulting_matrix)
-print(resulting_matrix)
+# normal = matrix_multiplication_GPU[amount_of_blocks, block_size](A, B, resulting_matrix)
+# print(resulting_matrix)
+#
+# resulting_matrix = np.zeros((size, size))
 
+# mult = matrix_multiplication_CPU(A, B, resulting_matrix)
+# print("normal", resulting_matrix)
+# resulting_matrix = np.zeros((size, size))
+
+shared = shared[amount_of_blocks, block_size](A, B, resulting_matrix)
+print("shared", resulting_matrix)
 resulting_matrix = np.zeros((size, size))
 
-
-
-shared = matrix_multiplication_GPU_shared_memory[amount_of_blocks, block_size](A, B, resulting_matrix)
-print(resulting_matrix)
+#
+# f = fast_matmul[amount_of_blocks, block_size](A, B, resulting_matrix)
+# print("fast", resulting_matrix)
