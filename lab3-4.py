@@ -6,24 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numba import cuda
 
-size = 1
-timing_cpu = {}
-timing_cpu_np = {}
-timing_gpu_naive = {}
-timing_gpu_shared = {}
-
-print("size: ", format(size))
-
 # 1024 threads per block
 block_size = 32, 32
-number_blocks_x = math.ceil(size / block_size[1])
-number_blocks_y = math.ceil(size / block_size[0])
-amount_of_blocks = number_blocks_x, number_blocks_y
-
-A = np.random.randint(10, size=(size, size))
-B = np.random.randint(10, size=(size, size))
-resulting_matrix = np.zeros((size, size))
-
 
 def matrix_multiplication_CPU(A, B, resulting_matrix):
     for i in range(A.shape[0]):
@@ -84,13 +68,20 @@ def matrix_multiplication_GPU_shared_memory(A, B, resulting_matrix):
         resulting_matrix[y, x] = sum
 
 
-# precompiling
-matrix_multiplication_GPU[amount_of_blocks, block_size](A, B, resulting_matrix)
-matrix_multiplication_GPU_shared_memory[amount_of_blocks, block_size](A, B, resulting_matrix)
 
-while size < 2500:
+size = 1
+timing_cpu = {}
+timing_cpu_np = {}
+timing_gpu_naive = {}
+timing_gpu_shared = {}
+
+while size < 1050:
 
     print(size)
+    number_blocks_x = math.ceil(size / block_size[0])
+    number_blocks_y = math.ceil(size / block_size[1])
+    amount_of_blocks = number_blocks_y, number_blocks_x
+
     A = np.random.randint(10, size=(size, size))
     B = np.random.randint(10, size=(size, size))
     resulting_matrix = np.zeros((size, size))
@@ -110,12 +101,16 @@ while size < 2500:
     gpu_naive = lambda: matrix_multiplication_GPU[amount_of_blocks, block_size](a_dev, b_dev, res_dev)
     # timing_gpu_naive[size] = timeit(gpu_naive, number=20)
 
+    # precompiling
+    # gpu_naive()
+    # cuda.synchronize()
+
     start = time.time()
     for i in range(20):
         gpu_naive()
         cuda.synchronize()
-    end = time.time() - start
-    timing_gpu_naive[size] = end
+    duration = time.time() - start
+    timing_gpu_naive[size] = duration
 
     resulting_matrix_2 = np.zeros((size, size))
     res_dev_2 = cuda.to_device(resulting_matrix_2)
@@ -123,12 +118,15 @@ while size < 2500:
     gpu_shared = lambda: matrix_multiplication_GPU_shared_memory[amount_of_blocks, block_size](a_dev, b_dev, res_dev_2)
     # timing_gpu_shared[size] = timeit(gpu_shared, number=20)
 
+    # gpu_shared()
+    # cuda.synchronize()
+
     start = time.time()
     for i in range(20):
         gpu_shared()
         cuda.synchronize()
-    end = time.time() - start
-    timing_gpu_shared[size] = end
+    duration = time.time() - start
+    timing_gpu_shared[size] = duration
 
     size *= 2
 
@@ -138,84 +136,93 @@ print(timing_gpu_naive)
 print(timing_gpu_shared)
 
 sizes = list(timing_gpu_naive.keys())
-# cpu_times = list(timing_cpu.values())
+cpu_times = list(timing_cpu.values())
 cpu_np_times = list(timing_cpu_np.values())
 gpu_naive_times = list(timing_gpu_naive.values())
 gpu_shared_times = list(timing_gpu_shared.values())
 
 # plt.plot(sizes, cpu_np_times, label='CPU Numpy')
-plt.plot(sizes, gpu_naive_times, label='GPU Naive')
+plt.plot(sizes, gpu_naive_times, label='GPU Repetitive memory access')
 plt.plot(sizes, gpu_shared_times, label='GPU Shared Memory')
 plt.legend()
 
-plt.title('Times for different implementations')
-plt.xlabel('Size')
+plt.title('Multiplication duration for different implementations')
+plt.xlabel('Square matrix order')
 plt.ylabel('Time (ms)')
 plt.yscale('log')
 
 plt.show()
 
-# #
-# #  CHAINING
-# size = 500
-#
-# A = np.random.randint(10, size=(size, size))
-# B = np.random.randint(10, size=(size, size))
-# C = np.random.randint(10, size=(size, size))
-# D = np.random.randint(10, size=(size, size))
-# E = np.random.randint(10, size=(size, size))
-# a_dev = cuda.to_device(A)
-# b_dev = cuda.to_device(B)
-# c_dev = cuda.to_device(C)
-# d_dev = cuda.to_device(D)
-#
-# timing = {}
-#
-# resulting_matrix = np.zeros((size, size))
-# res_dev_AB = cuda.to_device(resulting_matrix)
-#
-# gpu_shared = lambda: matrix_multiplication_GPU_shared_memory[amount_of_blocks, block_size](a_dev, b_dev, res_dev_AB)
-# # timing_gpu_shared[size] = timeit(gpu_shared, number=20)
-#
-# start = time.time()
-# for i in range(20):
-#     gpu_shared()
-#     cuda.synchronize()
-# end = time.time() - start
-# timing["AB"] = end
-#
-#
-#
-# resulting_matrix = np.zeros((size, size))
-# res_dev_AB = cuda.to_device(resulting_matrix)
-# res_dev_ABC = cuda.to_device(resulting_matrix)
-# gpu_shared_2 = lambda: (
-#     matrix_multiplication_GPU_shared_memory[amount_of_blocks, block_size](a_dev, b_dev, res_dev_AB),
-#     matrix_multiplication_GPU_shared_memory[amount_of_blocks, block_size](res_dev_AB, c_dev, res_dev_ABC)
-# )
-#
-# start = time.time()
-# for i in range(20):
-#     gpu_shared_2()
-#     cuda.synchronize()
-# end = time.time() - start
-# timing["ABC"] = end
-#
-#
-#
-# resulting_matrix = np.zeros((size, size))
-# res_dev_AB = cuda.to_device(resulting_matrix)
-# res_dev_ABC = cuda.to_device(resulting_matrix)
-# res_dev_ABCD = cuda.to_device(resulting_matrix)
-# gpu_shared_3 = lambda: (
-#     matrix_multiplication_GPU_shared_memory[amount_of_blocks, block_size](a_dev, b_dev, res_dev_AB),
-#     matrix_multiplication_GPU_shared_memory[amount_of_blocks, block_size](res_dev_AB, c_dev, res_dev_ABC),
-#     matrix_multiplication_GPU_shared_memory[amount_of_blocks, block_size](res_dev_ABC, d_dev, res_dev_ABCD)
-# )
-#
-# start = time.time()
-# for i in range(20):
-#     gpu_shared_3()
-#     cuda.synchronize()
-# end = time.time() - start
-# timing["ABCD"] = end
+
+
+#  CHAINING
+size = 1
+
+timing_no_migration = {}
+timing_migration = {}
+
+while size < 2100:
+    number_blocks_x = math.ceil(size / block_size[0])
+    number_blocks_y = math.ceil(size / block_size[1])
+    amount_of_blocks = number_blocks_y, number_blocks_x
+
+    A = np.random.randint(10, size=(size, size))
+    B = np.random.randint(10, size=(size, size))
+    C = np.random.randint(10, size=(size, size))
+    D = np.random.randint(10, size=(size, size))
+
+    resulting_matrix_AB = np.zeros((size, size))
+    resulting_matrix_ABC = np.zeros((size, size))
+    resulting_matrix_ABCD = np.zeros((size, size))
+    gpu_normal = lambda: (
+        matrix_multiplication_GPU[amount_of_blocks, block_size](A, B, resulting_matrix_AB),
+        matrix_multiplication_GPU[amount_of_blocks, block_size](resulting_matrix_AB, C, resulting_matrix_ABC),
+        matrix_multiplication_GPU[amount_of_blocks, block_size](resulting_matrix_ABC, D, resulting_matrix_ABCD)
+    )
+
+    gpu_normal()
+    timing_migration[size] = timeit(gpu_normal, number=20)
+
+    a_dev = cuda.to_device(A)
+    b_dev = cuda.to_device(B)
+    c_dev = cuda.to_device(C)
+    d_dev = cuda.to_device(D)
+    resulting_matrix = np.zeros((size, size))
+    res_dev_AB = cuda.to_device(resulting_matrix)
+    res_dev_ABC = cuda.to_device(resulting_matrix)
+    res_dev_ABCD = cuda.to_device(resulting_matrix)
+    gpu_no_migration = lambda: (
+        matrix_multiplication_GPU[amount_of_blocks, block_size](a_dev, b_dev, res_dev_AB),
+        matrix_multiplication_GPU[amount_of_blocks, block_size](res_dev_AB, c_dev, res_dev_ABC),
+        matrix_multiplication_GPU[amount_of_blocks, block_size](res_dev_ABC, d_dev, res_dev_ABCD)
+    )
+
+    # precompiling
+    gpu_no_migration()
+    cuda.synchronize()
+
+    start = time.time()
+    for i in range(20):
+        gpu_no_migration()
+        cuda.synchronize()
+    duration = time.time() - start
+    timing_no_migration[size] = duration
+
+    size *= 2
+
+
+sizes = list(timing_no_migration.keys())
+times_without_migration = list(timing_no_migration.values())
+times_with_migration = list(timing_migration.values())
+
+
+plt.plot(sizes, times_without_migration, label='No migration overhead')
+plt.plot(sizes, times_with_migration, label='Migration overhead')
+plt.legend()
+
+plt.title('Memory migration impact on chained square matrix multiplications (ABCD)')
+plt.xlabel('Square matrix order')
+plt.ylabel('Time (ms)')
+# plt.yscale('log')
+
+plt.show()

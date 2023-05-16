@@ -1,4 +1,6 @@
 import math
+import time
+from timeit import timeit
 
 import numpy as np
 from numba import cuda, float32
@@ -83,8 +85,6 @@ def matrix_multiplication_CPU(A, B, resulting_matrix):
                 resulting_matrix[i][j] += A[i][k] * B[k][j]
 
 
-res = np.matmul(A, B)
-print(res)
 
 
 # normal = matrix_multiplication_GPU[amount_of_blocks, block_size](A, B, resulting_matrix)
@@ -96,9 +96,77 @@ print(res)
 # print("normal", resulting_matrix)
 # resulting_matrix = np.zeros((size, size))
 
-shared = shared[amount_of_blocks, block_size](A, B, resulting_matrix)
-print("shared", resulting_matrix)
-resulting_matrix = np.zeros((size, size))
+
+# gpu_naive = lambda: matrix_multiplication_GPU[amount_of_blocks, block_size](a_dev, b_dev, res_dev)
+#     # timing_gpu_naive[size] = timeit(gpu_naive, number=20)
+
+#
+# shared[amount_of_blocks, block_size](A, B, resulting_matrix)
+#
+
+
+# while size < 2500:
+#
+#     number_blocks_x = math.ceil(size / block_size[0])
+#     number_blocks_y = math.ceil(size / block_size[1])
+#
+#     # can also be int
+#     amount_of_blocks = number_blocks_y, number_blocks_x
+#
+#     A = np.random.randint(10, size=(size, size))
+#     B = np.random.randint(10, size=(size, size))
+#     resulting_matrix = np.zeros((size, size))
+#
+#     res = np.matmul(A, B)
+#     print(res)
+#
+#     a_dev = cuda.to_device(A)
+#     b_dev = cuda.to_device(B)
+#     res_dev = cuda.to_device(resulting_matrix)
+#
+#     sa = lambda: shared[amount_of_blocks, block_size](a_dev, b_dev, res_dev)
+#     # timingz = timeit(shared, number=20)
+#
+#     sa()
+#     cuda.synchronize()
+#
+#     start = time.time()
+#     for i in range(20):
+#         sa()
+#         cuda.synchronize()
+#     end = time.time() - start
+#
+#     res = res_dev.copy_to_host()
+#     print("shared", res, end)
+#     # resulting_matrix = np.zeros((size, size))
+#
+#     size *= 2
+
+
+ok = lambda: (print("deed"), print("wedwed"))
+ok()
+
+#
+# A = np.random.randint(10, size=(size, size))
+# B = np.random.randint(10, size=(size, size))
+# resulting_matrix = np.zeros((size, size))
+#
+# #
+# a_dev = cuda.to_device(A)
+# b_dev = cuda.to_device(B)
+# res_dev = cuda.to_device(resulting_matrix)
+#
+# sa = lambda: shared[amount_of_blocks, block_size](a_dev, b_dev, res_dev)
+# # timingz = timeit(shared, number=20)
+#
+# start = time.time()
+# for i in range(20):
+#     sa()
+#     cuda.synchronize()
+# end = time.time() - start
+#
+# res = res_dev.copy_to_host()
+# print("shared", res, end)
 
 #
 # f = fast_matmul[amount_of_blocks, block_size](A, B, resulting_matrix)
