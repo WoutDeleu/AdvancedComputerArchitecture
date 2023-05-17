@@ -67,6 +67,42 @@ def matrix_multiplication_GPU_shared_memory(A, B, resulting_matrix):
     if x < resulting_matrix.shape[1] and y < resulting_matrix.shape[0]:
         resulting_matrix[y, x] = sum
 
+@cuda.jit
+def matrix_multiplication_GPU_shared_memory_nonSquare(A, B, resulting_matrix):
+    tx = cuda.threadIdx.x
+    x = tx + cuda.blockDim.x * cuda.blockIdx.x
+
+    ty = cuda.threadIdx.y
+    y = ty + cuda.blockDim.y * cuda.blockIdx.y
+
+    A_shared = cuda.shared.array(shape=block_size, dtype=np.int32)
+    B_shared = cuda.shared.array(shape=block_size, dtype=np.int32)
+
+    sum = 0
+
+    # copy naar shared memory
+    for i in range(cuda.gridDim.x):
+
+        # nodig om unexpected behaviour te vermijden!
+        A_shared[ty, tx] = 0
+        B_shared[ty, tx] = 0
+
+        if y < A.shape[0] and tx + i * block_size[1] < A.shape[1]:
+            A_shared[ty, tx] = A[y, tx + i * block_size[1]]
+
+        if x < B.shape[1] and ty + i * block_size[0] < B.shape[0]:
+            B_shared[ty, tx] = B[ty + i * block_size[0], x]
+
+        # na iteratie syncen!
+        cuda.syncthreads()
+
+        for j in range(block_size[1]):
+            sum += A_shared[ty, j] * B_shared[j, tx]
+
+        cuda.syncthreads()
+
+    if x < resulting_matrix.shape[1] and y < resulting_matrix.shape[0]:
+        resulting_matrix[y, x] = sum
 
 
 size = 1
